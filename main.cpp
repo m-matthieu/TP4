@@ -9,11 +9,13 @@
 #include <QMouseEvent>
 #include <QKeyEvent>
 #include <time.h>
-#include <sys/time.h>
+//#include <sys/time.h>
 #include <iostream>
 
 #include <QtCore>
 #include <QtGui>
+
+#include "MeshParser.h"
 
 //#include <omp.h>
 
@@ -43,6 +45,10 @@ int main(int argc, char **argv)
         window[i]->c = c;
         window[i]->setFormat(format);
         window[i]->resize(500,375);
+		window[i]->addMesh( "autumntree.ply", 0.5f, 0.f, 0.5f, 0, 0, 0, 0.25f, 0.25f, 0.25f );
+		window[i]->addMesh( "springtree.ply", 0.f, 0.f, 0.f, 0, 0, 0, 1, 1, 1 );
+		window[i]->addMesh( "summertree.ply", 1.f, 0.f, 1.f, 0, 0, 0, 1, 1, 1 );
+		window[i]->addMesh( "wintertree.ply", 0.f, 0.f, 0.5f, 0, 0, 0, 1, 1, 1 );
         int x = i%2;
         int y = i>>1;
                 
@@ -55,5 +61,7 @@ int main(int argc, char **argv)
     calendar->start(20);
 
     return app.exec();
+
+	system( "pause" );
 }
 

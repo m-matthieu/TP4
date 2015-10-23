@@ -2,6 +2,7 @@
 #define TRIANGLEWINDOW_H
 
 #include "openglwindow.h"
+#include "MeshParser.h"
 
 struct point
 {
@@ -47,6 +48,10 @@ public:
 
     void setSeason(int );
 
+	void addMesh( const char *c, float pX, float pY, float pZ, float rX, float rY, float rZ, float scX, float scY, float scZ );
+
+	void saveToFile( const char *c );
+	void loadFromFile( const char *c );
 public slots:
     void updateSeason();
 
@@ -64,6 +69,12 @@ private:
 
     QTimer *timer;
     QTimer *timerFPS;
+
+	std::vector<MeshParser *> mesh;
+
+	void renderMesh( int i );
+
+	char picName[100];
 };
 
 

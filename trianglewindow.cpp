@@ -9,7 +9,7 @@
 #include <QMouseEvent>
 #include <QKeyEvent>
 #include <time.h>
-#include <sys/time.h>
+//#include <sys/time.h>
 #include <iostream>
 
 #include <QtCore>
@@ -91,7 +91,10 @@ void TriangleWindow::initialize()
     glOrtho(-1.0, 1.0, -1.0, 1.0, -100.0, 100.0);
 
 
-    loadMap(":/heightmap-1.png");
+	//if( master )
+		//loadMap( ":/heightmap-1.png" );
+	//else
+		loadFromFile( "saveTest.tst" );
 
     particules = new point[numParticules];
 
@@ -124,6 +127,7 @@ void TriangleWindow::loadMap(QString localPath)
 
     if (QFile::exists(localPath)) {
         m_image = QImage(localPath);
+		strcpy_s( picName, localPath.toStdString().c_str() );
     }
 
 
@@ -145,6 +149,9 @@ void TriangleWindow::loadMap(QString localPath)
 
         }
     }
+
+	//if( master )
+	//	saveToFile( "saveTest.tst" );
 }
 
 void TriangleWindow::render()
@@ -220,6 +227,10 @@ void TriangleWindow::render()
         updateParticlesAut();
     else if (season == 3)
         updateParticlesHiv();
+
+	for( int i = 0; i != mesh.size(); ++i ) {
+		renderMesh( i );
+	}
 
     m_frame++;
 
@@ -599,6 +610,7 @@ void TriangleWindow::updateParticlesAut()
         {
             particules[id].z -= 0.0003f * ((float) minP + (rand() % (int)(maxP - minP + 1)));
             id2 = (particules[id].x)*m_image.width() + particules[id].y;
+			if( id2 < 0 ) id2 = 0;
             if(particules[id].z < p[id2].z)
             {
                 int angle =minP + (rand() % (int)(maxP - minP + 1));
@@ -648,7 +660,8 @@ void TriangleWindow::updateParticlesHiv()
         {
             particules[id].z -= 0.00001f * ((float) minP + (rand() % (int)(maxP - minP + 1)));
             id2 = (particules[id].x)*m_image.width() + particules[id].y;
-            if(particules[id].z < p[id2].z)
+			if( id2 < 0 ) id2 = 0;
+			if( particules[id].z < p[id2].z )
             {
                 int angle =minP + (rand() % (int)(maxP - minP + 1));
                 int dist = (rand() % (int)(100 ));
@@ -683,4 +696,144 @@ void TriangleWindow::updateParticlesHiv()
 
     }
     glEnd();
+}
+
+void TriangleWindow::addMesh( const char *c, float pX, float pY, float pZ, float rX, float rY, float rZ, float scX, float scY, float scZ ) {
+	MeshParser *m = new MeshParser;
+	m->from_PLY_file( c );
+
+	m->posX = pX;
+	m->posY = pY;
+	m->posZ = pZ;
+
+	m->rotX = rX;
+	m->rotY = rY;
+	m->rotZ = rZ;
+
+	m->scaleX = scX;
+	m->scaleY = scY;
+	m->scaleZ = scZ;
+
+	mesh.push_back( m );
+}
+
+void TriangleWindow::renderMesh( int i ) {
+	// set matrix
+	glRotatef( mesh[i]->rotX, 1, 0, 0 );
+	glRotatef( mesh[i]->rotY, 0, 1, 0 );
+	glRotatef( mesh[i]->rotZ, 0, 0, 1 );
+
+	glTranslatef( mesh[i]->posX, mesh[i]->posY, mesh[i]->posZ );
+
+	glScalef( mesh[i]->scaleX, mesh[i]->scaleY, mesh[i]->scaleZ );
+	//render
+	for( int j = 0; j != mesh[i]->nbFaces; ++j ) {
+		glColor3f( mesh[i]->normal[mesh[i]->faces[j][0] * 3],
+				   mesh[i]->normal[mesh[i]->faces[j][0] * 3 + 1],
+				   mesh[i]->normal[mesh[i]->faces[j][0] * 3 + 2] );
+		if( mesh[i]->faces[j].size() == 3 ) {
+			glBegin( GL_TRIANGLES );
+			for( int k = 0; k != 3; ++k ) {
+				glVertex3f(
+					mesh[i]->vertex[mesh[i]->faces[j][k] * 3],
+					mesh[i]->vertex[mesh[i]->faces[j][k] * 3 + 1],
+					mesh[i]->vertex[mesh[i]->faces[j][k] * 3 + 2] );
+			}
+			glEnd();
+		} else if( mesh[i]->faces[j].size() == 4 ) {
+			glBegin( GL_QUADS );
+			for( int k = 0; k != 4; ++k ) {
+				glVertex3f(
+					mesh[i]->vertex[mesh[i]->faces[j][k] * 3],
+					mesh[i]->vertex[mesh[i]->faces[j][k] * 3 + 1],
+					mesh[i]->vertex[mesh[i]->faces[j][k] * 3 + 2] );
+			}
+			glEnd();
+		}
+	}
+}
+
+void TriangleWindow::saveToFile( const char *c ) {
+	std::ofstream file;
+	file.open( c, std::ofstream::binary );
+	
+	// save time
+	file << season << " " << day << " ";
+	
+	// save camera
+	file << this->c->ss << " " << this->c->anim << " " << this->c->etat << " " << this->c->rotX << " " << this->c->rotY << " ";
+
+	// save data
+	int nbVertex = m_image.width() * m_image.height();
+	file << nbVertex << " ";
+	file << picName << " ";
+	uint id = 0;
+
+	for( int i = 0; i < m_image.width( ); i++ ) {
+		for( int j = 0; j < m_image.height( ); j++ ) {
+
+			id = i*m_image.width( ) + j;
+
+			file << p[id].x << " " << p[id].y << " " << p[id].z << " ";
+		}
+	}
+
+	file.flush();
+	file.close();
+	qDebug() << "FILE SAVED";
+}
+
+void TriangleWindow::loadFromFile( const char *c ) {
+	std::fstream file;
+	char line[100];
+	int nbVertex;
+
+	file.open( c, std::fstream::in );
+
+	file.getline( line, 100, ' ' );
+	sscanf( line, "%i", &season );
+
+	file.getline( line, 100, ' ' );
+	sscanf( line, "%i", &day );
+
+	file.getline( line, 100, ' ' );
+	sscanf( line, "%f", &this->c->ss );
+
+	file.getline( line, 100, ' ' );
+	sscanf( line, "%f", &this->c->anim );
+
+	file.getline( line, 100, ' ' );
+	sscanf( line, "%i", &this->c->etat );
+
+	file.getline( line, 100, ' ' );
+	sscanf( line, "%f", &this->c->rotX );
+
+	file.getline( line, 100, ' ' );
+	sscanf( line, "%f", &this->c->rotY );
+
+	file.getline( line, 100, ' ' );
+	sscanf( line, "%i", &nbVertex );
+
+	// load geometry
+	file.getline( line, 100, ' ' );
+	sscanf( line, "%s", picName );
+	//loadMap( pName );
+	m_image = QImage( picName );
+	p = (point *)malloc( nbVertex * sizeof( point ) );
+
+	for( int i = 0; i != nbVertex; ++i ) {
+		file.getline( line, 100, ' ' );
+		sscanf( line, "%f", &p[i].x );
+
+		file.getline( line, 100, ' ' );
+		sscanf( line, "%f", &p[i].y );
+
+		file.getline( line, 100, ' ' );
+		sscanf( line, "%f", &p[i].z );
+	}
+
+
+	file.close();
+
+	qDebug() << "load map from file successfully";
 }
